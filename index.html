@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>신규점포 방문 플래너 · 오더히어로 영업</title>
+<style>
+  :root{
+    --brand:#ff6b1a; --brand-dark:#e1530a; --gold:#c8a45c;
+    --bg:#f6f7f9; --card:#fff; --line:#e7e9ee; --ink:#1c2024; --sub:#6b7280;
+    --red:#e0413a; --redbg:#fdecea; --green:#159a5b; --greenbg:#e7f6ee;
+    --amber:#c77700; --amberbg:#fdf3e3;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo",sans-serif;
+    background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%}
+  header{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;padding:18px 16px 14px}
+  header h1{margin:0;font-size:18px;font-weight:800;letter-spacing:-.3px}
+  header p{margin:4px 0 0;font-size:12.5px;opacity:.9}
+  .wrap{max-width:640px;margin:0 auto;padding:14px 12px 60px}
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 6px}
+  .controls label{font-size:12px;color:var(--sub);font-weight:600}
+  select,input[type=date]{font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  select{font-weight:700;min-width:150px}
+  .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center}
+  .stat b{display:block;font-size:22px;font-weight:800;line-height:1.1}
+  .stat span{font-size:11px;color:var(--sub)}
+  .stat.red b{color:var(--red)} .stat.green b{color:var(--green)} .stat.amber b{color:var(--amber)}
+  .group{margin:18px 0 6px;font-size:13px;font-weight:800;color:var(--brand-dark);
+    display:flex;align-items:center;gap:6px}
+  .group .pin{background:var(--brand);color:#fff;border-radius:6px;font-size:11px;padding:2px 7px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;
+    box-shadow:0 1px 2px rgba(0,0,0,.03)}
+  .card.prio{border-left:5px solid var(--red)}
+  .card.done{border-left:5px solid var(--green);opacity:.92}
+  .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .biz{font-size:16px;font-weight:800;letter-spacing:-.3px}
+  .type{font-size:12px;color:var(--sub);margin-top:2px}
+  .badge{font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .b-red{background:var(--redbg);color:var(--red)}
+  .b-green{background:var(--greenbg);color:var(--green)}
+  .dday{font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .d-urgent{background:var(--redbg);color:var(--red)}
+  .d-ok{background:var(--amberbg);color:var(--amber)}
+  .d-over{background:#eceef1;color:var(--sub)}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:12.5px;color:#333}
+  .meta .k{color:var(--sub)}
+  .addr{margin-top:10px;font-size:13px}
+  .addr a{color:var(--brand-dark);text-decoration:none;font-weight:700}
+  .tip{margin-top:10px;background:#fbfaf6;border:1px dashed var(--gold);border-radius:10px;padding:8px 10px;
+    font-size:12px;color:#5b5238}
+  .tip b{color:var(--brand-dark)}
+  .empty{text-align:center;color:var(--sub);padding:40px 0;font-size:14px}
+  footer{text-align:center;color:var(--sub);font-size:11px;margin-top:24px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <h1>🦸 신규점포 6일 방문 플래너</h1>
+  <p>첫 주문 후 6일 내 키맨을 만나 2차 발주를 잡는 영업 동선 툴</p>
+</header>
+<div class="wrap">
+  <div class="controls">
+    <label>영업담당자</label>
+    <select id="repSel"></select>
+    <label>기준일(오늘)</label>
+    <input type="date" id="today" value="2026-01-01" />
+  </div>
+
+  <div class="summary">
+    <div class="stat"><b id="s-total">0</b><span>담당 신규점포</span></div>
+    <div class="stat red"><b id="s-need">0</b><span>방문필요</span></div>
+    <div class="stat amber"><b id="s-urgent">0</b><span>마감임박(D-1↓)</span></div>
+    <div class="stat green"><b id="s-done">0</b><span>활성화완료</span></div>
+  </div>
+
+  <div id="list"></div>
+
+  <footer>
+    데모 데이터: 2025-12-31 첫 주문(first_flag) 신규점포 10곳 · 출처 오더히어로 미러<br>
+    방문마감 = 첫 주문일 + 6일 &nbsp;|&nbsp; 활성화 = order_count ≥ 2 (2차 발주 완료)<br>
+    실제 운영 시 DB에서 매일 자동 갱신 → 담당자별 자동 배정
+  </footer>
+</div>
+
+<script>
+/* ── 데이터 (오더히어로 미러에서 추출) ───────────────────────────── */
+const STORES = [
+  {biz:"냉삼92",          rep:"하이퍼스타10", region:"서부", area:"영등포", addr:"서울 구로구 도림로14길 10", type:"한식·고기",       first:"2025-12-31T16:13", cnt:2, amt:66660},
+  {biz:"미식미객",        rep:"하이퍼스타10", region:"서부", area:"영등포", addr:"서울 구로구 구로동 142-76", type:"중식·마라/양꼬치", first:"2025-12-31T17:01", cnt:1, amt:60500},
+  {biz:"동춘돌곱창 냉삼92",rep:"하이퍼스타10", region:"서부", area:"영등포", addr:"서울 구로구 도림로 82",     type:"한식·고기",       first:"2025-12-31T17:33", cnt:1, amt:66660},
+  {biz:"서탑할매",        rep:"하이퍼스타10", region:"서부", area:"영등포", addr:"서울 영등포구 대림로 157",  type:"한식·고기",       first:"2025-12-31T18:00", cnt:1, amt:60500},
+  {biz:"9292양꼬치",      rep:"하이퍼스타10", region:"서부", area:"인천",   addr:"경기 부천시 원미구 부천로39번길 11", type:"중식·마라/양꼬치", first:"2025-12-31T18:34", cnt:2, amt:56050},
+  {biz:"베코블루스",      rep:"레이더스28",   region:"동부", area:"구리",   addr:"서울 중랑구 면목로91길 45", type:"카페",            first:"2025-12-31T16:24", cnt:1, amt:36030},
+  {biz:"바우네나주곰탕",  rep:"하이퍼스타16", region:"동부", area:"구리",   addr:"경기 남양주시 다산순환로 20", type:"한식·탕찌개",     first:"2025-12-31T18:45", cnt:1, amt:60560},
+  {biz:"곱도리탕 전문점", rep:"센트리",       region:"서부", area:"서울대", addr:"서울 동작구 사당동 267-36", type:"한식·탕찌개",     first:"2025-12-31T17:06", cnt:1, amt:31430},
+  {biz:"정성가득찌개",    rep:"센트리",       region:"서부", area:"서울대", addr:"서울 동작구 동작대로7길 92", type:"한식·탕찌개",     first:"2025-12-31T18:31", cnt:1, amt:120230},
+  {biz:"마라랑 광안점",   rep:"씨에스제이2",  region:"지방", area:"중부산", addr:"부산 수영구 호암로29번길 50", type:"중식·마라/양꼬치", first:"2025-12-31T23:47", cnt:1, amt:44540},
+];
+
+const repSel = document.getElementById('repSel');
+const todayEl = document.getElementById('today');
+const listEl = document.getElementById('list');
+
+/* 담당자 드롭다운: 전체 + 신규점포 많은 순 */
+const repCount = {};
+STORES.forEach(s => repCount[s.rep] = (repCount[s.rep]||0)+1);
+const reps = Object.keys(repCount).sort((a,b)=>repCount[b]-repCount[a]);
+repSel.innerHTML = `<option value="ALL">전체 (${STORES.length})</option>` +
+  reps.map(r=>`<option value="${r}">${r} (${repCount[r]})</option>`).join('');
+
+const addDays = (d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const fmtDate = d=>`${d.getMonth()+1}/${String(d.getDate()).padStart(2,'0')}`;
+const fmtWon = n=>n.toLocaleString('ko-KR')+'원';
+const mapLink = a=>`https://map.naver.com/p/search/${encodeURIComponent(a)}`;
+
+function ddayInfo(deadline, today){
+  const diff = Math.ceil((deadline - today)/(1000*60*60*24));
+  if(diff<0)  return {cls:'d-over',   txt:'마감 지남'};
+  if(diff===0)return {cls:'d-urgent', txt:'D-DAY'};
+  if(diff<=1) return {cls:'d-urgent', txt:'D-'+diff};
+  return {cls:'d-ok', txt:'D-'+diff};
+}
+
+function render(){
+  const rep = repSel.value;
+  const today = new Date(todayEl.value+'T00:00');
+  let rows = STORES.filter(s=>rep==='ALL'||s.rep===rep).map(s=>{
+    const fd = new Date(s.first);
+    const deadline = addDays(fd,6);
+    return {...s, fd, deadline, need:s.cnt<2};
+  });
+
+  /* 요약 */
+  document.getElementById('s-total').textContent  = rows.length;
+  document.getElementById('s-need').textContent   = rows.filter(r=>r.need).length;
+  document.getElementById('s-done').textContent   = rows.filter(r=>!r.need).length;
+  document.getElementById('s-urgent').textContent = rows.filter(r=>{
+    const diff=Math.ceil((r.deadline-today)/(1000*60*60*24));return r.need && diff<=1 && diff>=0;
+  }).length;
+
+  if(rows.length===0){ listEl.innerHTML='<div class="empty">담당 신규점포가 없습니다.</div>'; return; }
+
+  /* 권역·지역 묶음 → 그 안에서 방문필요 우선, 첫주문금액 큰 순 */
+  const groups = {};
+  rows.forEach(r=>{ const k=`${r.region} · ${r.area}`; (groups[k]=groups[k]||[]).push(r); });
+  const orderedKeys = Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
+
+  listEl.innerHTML = orderedKeys.map(k=>{
+    const g = groups[k].sort((a,b)=> (b.need-a.need) || (b.amt-a.amt));
+    const cards = g.map(r=>{
+      const dd = ddayInfo(r.deadline, today);
+      const statusBadge = r.need
+        ? '<span class="badge b-red">🔴 방문필요 · 2차발주 前</span>'
+        : '<span class="badge b-green">✅ 활성화완료 · 확대방문</span>';
+      const tip = r.need
+        ? `<div class="tip"><b>액션:</b> 첫 주문 만족도 확인 + 동종(${r.type}) 점포가 함께 받는 품목 제안 → 2차 발주 쿠폰</div>`
+        : `<div class="tip"><b>액션:</b> 이미 재발주 중 — 만족도 점검 + 카테고리 확대(객단가 ↑) 제안</div>`;
+      return `<div class="card ${r.need?'prio':'done'}">
+        <div class="row1">
+          <div><div class="biz">${r.biz}</div><div class="type">${r.type} · ${r.rep}</div></div>
+          <span class="dday ${dd.cls}">${dd.txt}</span>
+        </div>
+        ${statusBadge}
+        <div class="meta">
+          <span><span class="k">첫주문</span> ${r.fd.getMonth()+1}/${String(r.fd.getDate()).padStart(2,'0')} ${r.first.slice(11)}</span>
+          <span><span class="k">방문마감</span> ${fmtDate(r.deadline)}</span>
+          <span><span class="k">첫주문액</span> ${fmtWon(r.amt)}</span>
+        </div>
+        <div class="addr">📍 ${r.addr} &nbsp;·&nbsp; <a href="${mapLink(r.addr)}" target="_blank">지도열기 ↗</a></div>
+        ${tip}
+      </div>`;
+    }).join('');
+    return `<div class="group"><span class="pin">루트</span> ${k} <span style="color:var(--sub);font-weight:600">· ${g.length}곳</span></div>${cards}`;
+  }).join('');
+}
+
+repSel.addEventListener('change', render);
+todayEl.addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
